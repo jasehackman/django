@@ -883,6 +883,24 @@ class BaseDatabaseSchemaEditor:
             strict,
         )
 
+    def alter_fields(self, model, alter_fields_list):
+        """
+        Alter multiple fields on a model.
+
+        This method processes a list of old and new field tuples and invokes
+        the 'alter_field' method on each tuple.
+
+        Arguments:
+            model: An instance of the model where fields are to be altered.
+            alter_fields_list (list): A list of tuples where each tuple is in
+                                    the format (old_field, new_field).
+                                    'old_field' and 'new_field' should be
+                                    instances of existing and new
+                                    model fields respectively.
+        """
+        for old_field, new_field in alter_fields_list:
+            self.alter_field(model, old_field, new_field)
+
     def _field_db_check(self, field, field_db_params):
         # Always check constraints with the same mocked column name to avoid
         # recreating constrains when the column is renamed.
