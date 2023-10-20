@@ -348,6 +348,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if len(alter_fields_list) == 0:
             return
 
+        # If only a single field is altered, alter_field()
+        # covers all cases.
         if len(alter_fields_list) == 1:
             old_field, new_field = alter_fields_list[0]
             return self.alter_field(model, old_field, new_field)
@@ -355,12 +357,18 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         is_rebuild_required = False
         for old_field, new_field in alter_fields_list:
             if not self._is_column_rename(model, old_field, new_field):
+                # If a any column needs to be altered beyond a rename
+                # the table must be rebuilt.
                 is_rebuild_required = True
                 break
 
         if not is_rebuild_required:
-            # Rename columns
-            pass
+            for old_field, new_field in alter_fields_list:
+                # Sqlite cannot alter multiple column names
+                # in a single statement, the alter statements
+                # must be created individually
+                self.alter_field(model, old_field, new_field)
+            return
 
         # Rebuild Table
         pass
