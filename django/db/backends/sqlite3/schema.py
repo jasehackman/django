@@ -332,6 +332,18 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 return
             self._remake_table(model, delete_field=field)
 
+    def _is_column_rename(self, model, old_field, new_field):
+        return (
+            old_field.column != new_field.column
+            and self.column_sql(model, old_field) == self.column_sql(model, new_field)
+            and not (
+                old_field.remote_field
+                and old_field.db_constraint
+                or new_field.remote_field
+                and new_field.db_constraint
+            )
+        )
+
     def alter_fields(self, model, alter_fields_list):
         if len(alter_fields_list) == 0:
             return
@@ -339,6 +351,19 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if len(alter_fields_list) == 1:
             old_field, new_field = alter_fields_list[0]
             return self.alter_field(model, old_field, new_field)
+
+        is_rebuild_required = False
+        for old_field, new_field in alter_fields_list:
+            if not self._is_column_rename(model, old_field, new_field):
+                is_rebuild_required = True
+                break
+
+        if not is_rebuild_required:
+            # Rename columns
+            pass
+
+        # Rebuild Table
+        pass
 
     def _alter_field(
         self,
@@ -354,16 +379,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         """Perform a "physical" (non-ManyToMany) field update."""
         # Use "ALTER TABLE ... RENAME COLUMN" if only the column name
         # changed and there aren't any constraints.
-        if (
-            old_field.column != new_field.column
-            and self.column_sql(model, old_field) == self.column_sql(model, new_field)
-            and not (
-                old_field.remote_field
-                and old_field.db_constraint
-                or new_field.remote_field
-                and new_field.db_constraint
-            )
-        ):
+        if self._is_column_rename(model, old_field, new_field):
             return self.execute(
                 self._rename_field_sql(
                     model._meta.db_table, old_field, new_field, new_type
