@@ -332,6 +332,10 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 return
             self._remake_table(model, delete_field=field)
 
+    def alter_fields(self, model, alter_fields_list):
+        if len(alter_fields_list) == 0:
+            return
+
     def _alter_field(
         self,
         model,
