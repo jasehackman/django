@@ -336,6 +336,10 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if len(alter_fields_list) == 0:
             return
 
+        if len(alter_fields_list) == 1:
+            old_field, new_field = alter_fields_list[0]
+            return self.alter_field(model, old_field, new_field)
+
     def _alter_field(
         self,
         model,
