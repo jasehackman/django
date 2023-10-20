@@ -13,12 +13,12 @@ from django.db import (
     connections,
     transaction,
 )
-from django.db.models import Aggregate, Avg, StdDev, Sum, Variance
+from django.db.models import Aggregate, Avg, CharField, StdDev, Sum, TextField, Variance
 from django.db.utils import ConnectionHandler
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.test.utils import isolate_apps
 
-from ..models import Item, Object, Square
+from ..models import Animal, Item, Object, Square
 
 
 @unittest.skipUnless(connection.vendor == "sqlite", "SQLite tests")
@@ -167,6 +167,80 @@ class SchemaTests(TransactionTestCase):
                 self.assertFalse(constraint_checks_enabled())
             self.assertFalse(constraint_checks_enabled())
         self.assertTrue(constraint_checks_enabled())
+
+    def test_alter_fields_empty_list(self):
+        """
+        SQLite has an override implementation of alter_fields.
+        This test confirms no change is made if it is passed an empty list.
+        """
+
+        with connection.schema_editor() as editor:
+            editor.alter_fields(Animal, [])
+
+        # Confirmed with breakpoint that the correct code path is triggered
+        # Need to discover how to assert proper end result
+
+    def test_alter_fields_single_tuple_in_list(self):
+        """
+        SQLite has an override implementation of alter_fields.
+        This test validates that if a single tuple is passed in the list,
+        alter_field is called that is defined on the super.
+        """
+
+        with connection.schema_editor() as editor:
+            old_field_name = Animal._meta.get_field("name")
+            new_field_name = CharField(max_length=30, name="new_name")
+            new_field_name.set_attributes_from_name("name")
+            editor.alter_fields(Animal, [(old_field_name, new_field_name)])
+
+        # Confirmed with breakpoint that the correct code path is triggered
+        # Need to discover how to assert proper end result
+
+    def test_alter_fields_multiple_tuples_in_list_does_not_require_rebuild(self):
+        """
+        SQLite has an override implementation of alter_fields.
+        This test validates that if the list passed contains multiple tuples,
+        but none of the tuples require a rebuild,
+        then super().alter_fields(model, field_changes) is called.
+        """
+        with connection.schema_editor() as editor:
+            old_field_name = Animal._meta.get_field("name")
+            new_field_name = CharField(max_length=30, name="new_name")
+            new_field_name.set_attributes_from_name("name")
+            old_field_color = Animal._meta.get_field("color")
+            new_field_color = CharField(max_length=30, name="new_color")
+            new_field_color.set_attributes_from_name("color")
+
+            editor.alter_fields(
+                Animal,
+                [(old_field_name, new_field_name), (old_field_color, new_field_color)],
+            )
+
+        # Confirmed with breakpoint that the correct code path is triggered
+        # Need to discover how to assert proper end result
+
+    def test_alter_fields_multiple_tuples_in_list_require_rebuild(self):
+        """
+        SQLite has an override implementation of alter_fields.
+        This test validates that if the list passed contains multiple tuples,
+        and one of the tuples requires a table rebuilt that the table is rebuilt.
+        """
+
+        with connection.schema_editor() as editor:
+            old_field_name = Animal._meta.get_field("name")
+            new_field_name = TextField()
+            new_field_name.set_attributes_from_name("name")
+            old_field_color = Animal._meta.get_field("color")
+            new_field_color = CharField(max_length=30, name="new_color")
+            new_field_color.set_attributes_from_name("color")
+
+            editor.alter_fields(
+                Animal,
+                [(old_field_name, new_field_name), (old_field_color, new_field_color)],
+            )
+
+        # Confirmed with breakpoint that the correct code path is triggered
+        # Need to discover how to assert proper end result
 
 
 @unittest.skipUnless(connection.vendor == "sqlite", "Test only for SQLite")

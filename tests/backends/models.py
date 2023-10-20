@@ -156,3 +156,8 @@ class SQLKeywordsModel(models.Model):
 
     class Meta:
         db_table = "order"
+
+
+class Animal(models.Model):
+    name = models.CharField(max_length=30)
+    color = models.CharField(max_length=30)
